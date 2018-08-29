@@ -4,6 +4,7 @@
 
 dependencies {
     testCompile "com.devexperts.lincheck:core:$lincheck_version"
+    testCompile "com.esotericsoftware:kryo:4.0.0"
 }
 
 task checkJdk16() {
