@@ -2,13 +2,13 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.scheduling
+package kotlinx.coroutines.scheduling
 
 import kotlinx.atomicfu.*
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.internal.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.internal.*
 import org.junit.*
-import kotlin.coroutines.experimental.*
+import kotlin.coroutines.*
 
 abstract class SchedulerTestBase : TestBase() {
     companion object {
@@ -60,7 +60,7 @@ abstract class SchedulerTestBase : TestBase() {
     }
 
     private val exception = atomic<Throwable?>(null)
-    private val handler = CoroutineExceptionHandler({ _, e -> exception.value = e })
+    private val handler = CoroutineExceptionHandler { _, e -> exception.value = e }
 
     protected var corePoolSize = 1
     protected var maxPoolSize = 1024
@@ -87,6 +87,11 @@ abstract class SchedulerTestBase : TestBase() {
     protected fun blockingDispatcher(parallelism: Int): CoroutineContext {
         val intitialize = dispatcher
         return _dispatcher!!.blocking(parallelism) + handler
+    }
+
+    protected fun view(parallelism: Int): CoroutineContext {
+        val intitialize = dispatcher
+        return _dispatcher!!.limited(parallelism) + handler
     }
 
     fun initialPoolSize() = corePoolSize.coerceAtMost(2)

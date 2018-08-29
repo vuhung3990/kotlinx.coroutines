@@ -2,18 +2,19 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.future
+package kotlinx.coroutines.future
 
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.CancellationException
+import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
 import org.hamcrest.core.*
 import org.junit.*
 import org.junit.Assert.*
 import java.util.concurrent.*
 import java.util.concurrent.atomic.*
 import java.util.concurrent.locks.*
+import java.util.function.Supplier
 import kotlin.concurrent.*
-import kotlin.coroutines.experimental.*
+import kotlin.coroutines.*
 
 class FutureTest : TestBase() {
     @Before
@@ -312,6 +313,23 @@ class FutureTest : TestBase() {
             assertEquals("something went wrong", cause.message)
             assertSame(e, deferred.getCompletionExceptionOrNull()) // same exception is returns as thrown
         }
+    }
+
+    private val threadLocal = ThreadLocal<String>()
+
+    @Test
+    fun testApiBridge() = runTest {
+        val result = newSingleThreadContext("ctx").use {
+            val future = CompletableFuture.supplyAsync(Supplier { threadLocal.set("value") }, it.executor)
+            val job = async(it) {
+                future.await()
+                threadLocal.get()
+            }
+
+            job.await()
+        }
+
+        assertEquals("value", result)
     }
 
     class TestException(message: String) : Exception(message)

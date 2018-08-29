@@ -2,17 +2,17 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.guava
+package kotlinx.coroutines.guava
 
 import com.google.common.util.concurrent.*
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.CancellationException
+import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
 import org.hamcrest.core.*
 import org.junit.*
 import org.junit.Assert.*
 import java.io.*
 import java.util.concurrent.*
-import kotlin.coroutines.experimental.*
+import kotlin.coroutines.*
 
 class ListenableFutureTest : TestBase() {
     @Before
@@ -45,7 +45,7 @@ class ListenableFutureTest : TestBase() {
     }
 
     @Test
-    fun testAwaitWithContextCancellation() = runTest(expected = {it is JobCancellationException}) {
+    fun testAwaitWithContextCancellation() = runTest(expected = {it is IOException}) {
         val future = SettableFuture.create<Int>()
         val deferred = async(coroutineContext) {
             withContext(DefaultDispatcher) {

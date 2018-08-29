@@ -5,12 +5,12 @@
 @file:JvmMultifileClass
 @file:JvmName("BuildersKt")
 
-package kotlinx.coroutines.experimental
+package kotlinx.coroutines
 
-import kotlinx.coroutines.experimental.internal.*
-import kotlinx.coroutines.experimental.intrinsics.*
-import kotlin.coroutines.experimental.*
-import kotlin.coroutines.experimental.intrinsics.*
+import kotlinx.coroutines.internal.*
+import kotlinx.coroutines.intrinsics.*
+import kotlin.coroutines.*
+import kotlin.coroutines.intrinsics.*
 
 // --------------- basic coroutine builders ---------------
 
@@ -20,7 +20,7 @@ import kotlin.coroutines.experimental.intrinsics.*
  *
  * The [context] for the new coroutine can be explicitly specified.
  * See [CoroutineDispatcher] for the standard context implementations that are provided by `kotlinx.coroutines`.
- * The [coroutineContext](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines.experimental/coroutine-context.html)
+ * The [coroutineContext](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines/coroutine-context.html)
  * of the parent coroutine may be used,
  * in which case the [Job] of the resulting coroutine is a child of the job of the parent coroutine.
  * The parent job may be also explicitly specified using [parent] parameter.
@@ -119,8 +119,11 @@ public suspend fun <T> withContext(
     // fast path #3 if the new dispatcher is the same as the old one.
     // `equals` is used by design (see equals implementation is wrapper context like ExecutorCoroutineDispatcher)
     if (newContext[ContinuationInterceptor] == oldContext[ContinuationInterceptor]) {
-        val newContinuation = RunContinuationDirect(newContext, uCont)
-        return@sc block.startCoroutineUninterceptedOrReturn(newContinuation)
+        val newContinuation = RunContinuationUnintercepted(newContext, uCont)
+        // There are some other changes in the context, so this thread needs to be updated
+        withCoroutineContext(newContext) {
+            return@sc block.startCoroutineUninterceptedOrReturn(newContinuation)
+        }
     }
     // slowest path otherwise -- use new interceptor, sync to its result via a full-blown instance of RunCompletion
     require(!start.isLazy) { "$start start is not supported" }
@@ -130,7 +133,6 @@ public suspend fun <T> withContext(
         resumeMode = if (start == CoroutineStart.ATOMIC) MODE_ATOMIC_DEFAULT else MODE_CANCELLABLE
     )
     completion.initParentJobInternal(newContext[Job]) // attach to job
-    @Suppress("DEPRECATION")
     start(block, completion)
     completion.getResult()
 }
@@ -157,9 +159,15 @@ private open class StandaloneCoroutine(
     active: Boolean
 ) : AbstractCoroutine<Unit>(parentContext, active) {
     override fun hasOnFinishingHandler(update: Any?) = update is CompletedExceptionally
+
+    override fun handleJobException(exception: Throwable) {
+        handleCoroutineException(parentContext, exception, this)
+    }
+
     override fun onFinishingInternal(update: Any?) {
-        // note the use of the parent's job context below!
-        if (update is CompletedExceptionally) handleCoroutineException(parentContext, update.cause)
+        if (update is CompletedExceptionally && update.cause !is CancellationException) {
+            parentContext[Job]?.cancel(update.cause)
+        }
     }
 }
 
@@ -172,10 +180,16 @@ private class LazyStandaloneCoroutine(
     }
 }
 
-private class RunContinuationDirect<in T>(
+private class RunContinuationUnintercepted<in T>(
     override val context: CoroutineContext,
-    continuation: Continuation<T>
-) : Continuation<T> by continuation
+    private val continuation: Continuation<T>
+): Continuation<T> {
+    override fun resumeWith(result: SuccessOrFailure<T>) {
+        withCoroutineContext(continuation.context) {
+            continuation.resumeWith(result)
+        }
+    }
+}
 
 @Suppress("UNCHECKED_CAST")
 private class RunCompletion<in T>(

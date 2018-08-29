@@ -2,11 +2,11 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.scheduling
+package kotlinx.coroutines.scheduling
 
 import kotlinx.atomicfu.*
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.internal.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.internal.*
 import java.io.Closeable
 import java.util.*
 import java.util.concurrent.*
@@ -62,7 +62,7 @@ internal class CoroutineScheduler(
     private val maxPoolSize: Int,
     private val idleWorkerKeepAliveNs: Long = IDLE_WORKER_KEEP_ALIVE_NS,
     private val schedulerName: String = DEFAULT_SCHEDULER_NAME
-) : Closeable {
+) : Executor, Closeable {
     init {
         require(corePoolSize >= MIN_SUPPORTED_POOL_SIZE) {
             "Core pool size $corePoolSize should be at least $MIN_SUPPORTED_POOL_SIZE"
@@ -289,6 +289,8 @@ internal class CoroutineScheduler(
         private const val PARKED_VERSION_MASK = CREATED_MASK.inv()
         private const val PARKED_VERSION_INC = 1L shl BLOCKING_SHIFT
     }
+
+    override fun execute(command: Runnable) = dispatch(command)
 
     override fun close() = shutdown(1000L)
 

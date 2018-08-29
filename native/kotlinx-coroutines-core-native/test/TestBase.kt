@@ -2,7 +2,7 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental
+package kotlinx.coroutines
 
 public actual open class TestBase actual constructor() {
     public actual val isStressTest: Boolean = false
@@ -21,6 +21,11 @@ public actual open class TestBase actual constructor() {
         val exception = IllegalStateException(message.toString(), cause)
         if (error == null) error = exception
         throw exception
+    }
+
+    private fun printError(message: String, cause: Throwable) {
+        if (error == null) error = cause
+        println("$message: $cause")
     }
 
     /**
@@ -65,10 +70,12 @@ public actual open class TestBase actual constructor() {
             runBlocking(block = block, context = CoroutineExceptionHandler { context, e ->
                 if (e is CancellationException) return@CoroutineExceptionHandler // are ignored
                 exCount++
-                if (exCount > unhandled.size)
-                    error("Too many unhandled exceptions $exCount, expected ${unhandled.size}, got: $e", e)
-                if (!unhandled[exCount - 1](e))
-                    error("Unhandled exception was unexpected: $e", e)
+                when {
+                    exCount > unhandled.size ->
+                        printError("Too many unhandled exceptions $exCount, expected ${unhandled.size}, got: $e", e)
+                    !unhandled[exCount - 1](e) ->
+                        printError("Unhandled exception was unexpected: $e", e)
+                }
                 context[Job]?.cancel(e)
             })
         } catch (e: Throwable) {

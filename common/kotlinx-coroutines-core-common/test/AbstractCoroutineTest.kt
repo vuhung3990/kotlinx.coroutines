@@ -2,12 +2,13 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental
+package kotlinx.coroutines
 
-import kotlin.coroutines.experimental.*
+import kotlin.coroutines.*
 import kotlin.test.*
 
 class AbstractCoroutineTest : TestBase() {
+
     @Test
     fun testNotifications() = runTest {
         expect(1)
@@ -67,18 +68,21 @@ class AbstractCoroutineTest : TestBase() {
             }
 
             override fun onCompletedExceptionally(exception: Throwable) {
-                assertTrue(exception is TestException1)
+                assertTrue(exception is TestException0)
                 expect(9)
             }
         }
+
         coroutine.invokeOnCompletion(onCancelling = true) {
             assertTrue(it is TestException0)
             expect(6)
         }
+
         coroutine.invokeOnCompletion {
-            assertTrue(it is TestException1)
+            assertTrue(it is TestException0)
             expect(8)
         }
+
         expect(2)
         coroutine.start()
         expect(4)

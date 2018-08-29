@@ -2,15 +2,15 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.reactive
+package kotlinx.coroutines.reactive
 
 import kotlinx.atomicfu.*
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.channels.*
-import kotlinx.coroutines.experimental.selects.*
-import kotlinx.coroutines.experimental.sync.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+import kotlinx.coroutines.selects.*
+import kotlinx.coroutines.sync.*
 import org.reactivestreams.*
-import kotlin.coroutines.experimental.*
+import kotlin.coroutines.*
 
 /**
  * Creates cold reactive [Publisher] that runs a given [block] in a coroutine.
@@ -121,7 +121,7 @@ private class PublisherCoroutine<in T>(
         } catch (e: Throwable) {
             try {
                 if (!cancel(e))
-                    handleCoroutineException(context, e)
+                    handleCoroutineException(context, e, this)
             } finally {
                 doLockedSignalCompleted()
             }
@@ -162,7 +162,7 @@ private class PublisherCoroutine<in T>(
                     else
                         subscriber.onComplete()
                 } catch (e: Throwable) {
-                    handleCoroutineException(context, e)
+                    handleCoroutineException(context, e, this)
                 }
             }
         } finally {

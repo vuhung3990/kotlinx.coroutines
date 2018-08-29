@@ -5,9 +5,9 @@
 
 @file:Suppress("NAMED_ARGUMENTS_NOT_ALLOWED") // KT-21913
 
-package kotlinx.coroutines.experimental
+package kotlinx.coroutines
 
-import kotlin.coroutines.experimental.*
+import kotlin.coroutines.*
 import kotlin.test.*
 
 class WithTimeoutTest : TestBase() {
@@ -148,9 +148,7 @@ class WithTimeoutTest : TestBase() {
     }
 
     @Test
-    fun testSuppressExceptionWithAnotherException() = runTest(
-        expected = { it is TestException }
-    ) {
+    fun testSuppressExceptionWithAnotherException() = runTest(expected = { it is TimeoutCancellationException }) {
         expect(1)
         withTimeout(100) {
             expect(2)
@@ -163,6 +161,7 @@ class WithTimeoutTest : TestBase() {
             expectUnreached()
             "OK"
         }
+
         expectUnreached()
     }
 

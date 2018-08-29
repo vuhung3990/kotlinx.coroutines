@@ -5,12 +5,44 @@
 
 @file:Suppress("NAMED_ARGUMENTS_NOT_ALLOWED") // KT-21913
 
-package kotlinx.coroutines.experimental
+package kotlinx.coroutines
 
-import kotlin.coroutines.experimental.*
+import kotlin.coroutines.*
 import kotlin.test.*
 
 class WithContextTest : TestBase() {
+
+    @Test
+    fun testThrowException() = runTest {
+        expect(1)
+        try {
+            withContext(coroutineContext) {
+                expect(2)
+                throw AssertionError()
+            }
+        } catch (e: AssertionError) {
+            expect(3)
+        }
+
+        yield()
+        finish(4)
+    }
+
+    @Test
+    fun testThrowExceptionFromWrappedContext() = runTest {
+        expect(1)
+        try {
+            withContext(wrapperDispatcher(coroutineContext)) {
+                expect(2)
+                throw AssertionError()
+            }
+        } catch (e: AssertionError) {
+            expect(3)
+        }
+
+        yield()
+        finish(4)
+    }
 
     @Test
     fun testSameContextNoSuspend() = runTest {
@@ -141,17 +173,17 @@ class WithContextTest : TestBase() {
     }
 
     @Test
-    fun testRunSelfCancellationWithException() = runTest {
+    fun testRunSelfCancellationWithException() = runTest(unhandled = listOf({e -> e is AssertionError})) {
         expect(1)
         var job: Job? = null
-        job = launch(coroutineContext) {
+        job = launch(coroutineContext, parent = Job()) {
             try {
                 expect(3)
                 withContext(wrapperDispatcher(coroutineContext)) {
                     require(isActive)
                     expect(5)
                     require(job!!.cancel()) // cancel itself
-                    require(!job!!.cancel(AssertionError())) // cancel again, no success here
+                    require(job!!.cancel(AssertionError())) // cancel again, no success here
                     require(!isActive)
                     throw TestException() // but throw a different exception
                 }
@@ -171,22 +203,22 @@ class WithContextTest : TestBase() {
     }
 
     @Test
-    fun testRunSelfCancellation() = runTest {
+    fun testRunSelfCancellation() = runTest(unhandled = listOf({e -> e is AssertionError})) {
         expect(1)
         var job: Job? = null
-        job = launch(coroutineContext) {
+        job = launch(coroutineContext, parent = Job()) {
             try {
                 expect(3)
                 withContext(wrapperDispatcher(coroutineContext)) {
                     require(isActive)
                     expect(5)
                     require(job!!.cancel()) // cancel itself
-                    require(!job!!.cancel(AssertionError())) // cancel again, no success here
+                    require(job!!.cancel(AssertionError()))
                     require(!isActive)
                 }
             } catch (e: Throwable) {
                 expect(7)
-                // make sure TestException, not CancellationException or AssertionError is thrown!
+                // make sure JCE is thrown
                 assertTrue(e is JobCancellationException, "Caught $e")
             }
         }

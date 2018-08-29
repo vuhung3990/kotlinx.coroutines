@@ -2,16 +2,16 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.channels
+package kotlinx.coroutines.channels
 
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.*
 import org.hamcrest.core.*
 import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.*
 import org.junit.runners.*
 import java.io.*
-import kotlin.coroutines.experimental.*
+import kotlin.coroutines.*
 
 @RunWith(Parameterized::class)
 class ActorTest(private val capacity: Int) : TestBase() {
@@ -146,6 +146,26 @@ class ActorTest(private val capacity: Int) : TestBase() {
         }
 
         actor.send(1)
+        parent.cancel()
+        parent.join()
+        finish(2)
+    }
+
+    @Test
+    fun testChildJob() = runTest {
+        val parent = Job()
+        actor<Int>(context = coroutineContext, parent = parent) {
+            launch(coroutineContext) {
+                try {
+                    delay(Long.MAX_VALUE)
+                } finally {
+                    expect(1)
+                }
+            }
+        }
+
+        yield()
+        yield()
         parent.cancel()
         parent.join()
         finish(2)

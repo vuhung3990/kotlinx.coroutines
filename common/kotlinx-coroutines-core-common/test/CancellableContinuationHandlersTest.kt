@@ -2,8 +2,9 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental
+package kotlinx.coroutines
 
+import kotlin.coroutines.*
 import kotlin.test.*
 
 class CancellableContinuationHandlersTest : TestBase() {
@@ -85,7 +86,7 @@ class CancellableContinuationHandlersTest : TestBase() {
     }
 
     @Test
-    fun testExceptionInHandler() = runTest({it is CancellationException}, listOf({e -> e is CompletionHandlerException})) {
+    fun testExceptionInHandler() = runTest({it is CompletionHandlerException}) {
         suspendCancellableCoroutine<Unit> { c ->
             c.invokeOnCancellation { throw AssertionError() }
             c.cancel()

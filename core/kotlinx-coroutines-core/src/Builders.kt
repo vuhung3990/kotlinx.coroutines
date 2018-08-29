@@ -5,10 +5,10 @@
 @file:JvmMultifileClass
 @file:JvmName("BuildersKt")
 
-package kotlinx.coroutines.experimental
+package kotlinx.coroutines
 
 import java.util.concurrent.locks.*
-import kotlin.coroutines.experimental.*
+import kotlin.coroutines.*
 
 /**
  * Runs new coroutine and **blocks** current thread _interruptibly_ until its completion.
@@ -56,7 +56,7 @@ private class BlockingCoroutine<T>(
         if (privateEventLoop) require(eventLoop is BlockingEventLoop)
     }
 
-    override fun onCancellationInternal(exceptionally: CompletedExceptionally?) {
+    override fun onCompletionInternal(state: Any?, mode: Int) {
         // wake up blocked thread
         if (Thread.currentThread() != blockedThread)
             LockSupport.unpark(blockedThread)

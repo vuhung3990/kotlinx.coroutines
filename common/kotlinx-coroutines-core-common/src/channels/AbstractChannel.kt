@@ -2,14 +2,14 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.channels
+package kotlinx.coroutines.channels
 
 import kotlinx.atomicfu.*
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.internal.*
-import kotlinx.coroutines.experimental.intrinsics.*
-import kotlinx.coroutines.experimental.selects.*
-import kotlin.coroutines.experimental.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.internal.*
+import kotlinx.coroutines.intrinsics.*
+import kotlinx.coroutines.selects.*
+import kotlin.coroutines.*
 
 /**
  * Abstract send channel. It is a base class for all send channel implementations.
@@ -414,7 +414,7 @@ public abstract class AbstractSendChannel<E> : SendChannel<E> {
                     offerResult === ALREADY_SELECTED -> return
                     offerResult === OFFER_FAILED -> {} // retry
                     offerResult === OFFER_SUCCESS -> {
-                        block.startCoroutineUndispatched(receiver = this, completion = select.completion)
+                        block.startCoroutineUnintercepted(receiver = this, completion = select.completion)
                         return
                     }
                     offerResult is Closed<*> -> throw offerResult.sendException
@@ -753,7 +753,7 @@ public abstract class AbstractChannel<E> : AbstractSendChannel<E>(), Channel<E> 
                     pollResult === POLL_FAILED -> {} // retry
                     pollResult is Closed<*> -> throw pollResult.receiveException
                     else -> {
-                        block.startCoroutineUndispatched(pollResult as E, select.completion)
+                        block.startCoroutineUnintercepted(pollResult as E, select.completion)
                         return
                     }
                 }
@@ -788,14 +788,14 @@ public abstract class AbstractChannel<E> : AbstractSendChannel<E>(), Channel<E> 
                     pollResult is Closed<*> -> {
                         if (pollResult.closeCause == null) {
                             if (select.trySelect(null))
-                                block.startCoroutineUndispatched(null, select.completion)
+                                block.startCoroutineUnintercepted(null, select.completion)
                             return
                         } else
                             throw pollResult.closeCause
                     }
                     else -> {
                         // selected successfully
-                        block.startCoroutineUndispatched(pollResult as E, select.completion)
+                        block.startCoroutineUnintercepted(pollResult as E, select.completion)
                         return
                     }
                 }

@@ -2,13 +2,13 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental
+package kotlinx.coroutines
 
 import kotlinx.atomicfu.*
-import kotlinx.coroutines.experimental.internal.*
-import kotlinx.coroutines.experimental.timeunit.*
+import kotlinx.coroutines.internal.*
+import kotlinx.coroutines.timeunit.*
 import java.util.concurrent.locks.*
-import kotlin.coroutines.experimental.*
+import kotlin.coroutines.*
 
 /**
  * Implemented by [CoroutineDispatcher] implementations that have event loop inside and can
@@ -17,7 +17,7 @@ import kotlin.coroutines.experimental.*
  * It may optionally implement [Delay] interface and support time-scheduled tasks. It is used by [runBlocking] to
  * continue processing events when invoked from the event dispatch thread.
  */
-public interface EventLoop {
+public interface EventLoop: ContinuationInterceptor {
     /**
      * Processes next event in this event loop.
      *
@@ -54,10 +54,18 @@ public interface EventLoop {
  * ```
  */
 @Suppress("FunctionName")
-public fun EventLoop(thread: Thread = Thread.currentThread(), parentJob: Job? = null): CoroutineDispatcher =
+public fun EventLoop(thread: Thread = Thread.currentThread(), parentJob: Job? = null): EventLoop =
     EventLoopImpl(thread).apply {
         if (parentJob != null) initParentJob(parentJob)
     }
+
+/**
+ * @suppress **Deprecated**: Preserves binary compatibility with old code
+ */
+@JvmName("EventLoop")
+@Deprecated(level = DeprecationLevel.HIDDEN, message = "Preserves binary compatibility with old code")
+public fun EventLoop_Deprecated(thread: Thread = Thread.currentThread(), parentJob: Job? = null): CoroutineDispatcher =
+    EventLoop(thread, parentJob) as CoroutineDispatcher
 
 private const val DELAYED = 0
 private const val REMOVED = 1

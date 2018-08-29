@@ -2,10 +2,16 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental
+package kotlinx.coroutines
 
-import kotlinx.coroutines.experimental.internal.*
-import kotlin.coroutines.experimental.*
+import kotlinx.coroutines.internal.*
+import kotlin.coroutines.*
+
+/**
+ * @suppress **This is unstable API and it is subject to change.**
+ */
+public fun <T> SuccessOrFailure<T>.toState(): Any? =
+    if (isSuccess) getOrThrow() else CompletedExceptionally(exceptionOrNull()!!) // todo: need to do it better
 
 /**
  * Class for an internal state of a job that had completed exceptionally, including cancellation.
@@ -27,7 +33,6 @@ open class CompletedExceptionally(
  * A specific subclass of [CompletedExceptionally] for cancelled jobs.
  *
  * **Note: This class cannot be used outside of internal coroutines framework**.
- * TODO rename to CancelledJob?
  *
  * @param job the job that was cancelled.
  * @param cause the exceptional completion cause. If `cause` is null, then a [JobCancellationException] is created.

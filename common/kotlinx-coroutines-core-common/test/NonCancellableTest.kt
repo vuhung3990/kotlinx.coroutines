@@ -2,9 +2,9 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental
+package kotlinx.coroutines
 
-import kotlin.coroutines.experimental.*
+import kotlin.coroutines.*
 import kotlin.test.*
 
 class NonCancellableTest : TestBase() {
@@ -40,7 +40,7 @@ class NonCancellableTest : TestBase() {
     @Test
     fun testNonCancellableWithException() = runTest {
         expect(1)
-        val job = async(coroutineContext) {
+        val deferred = async(coroutineContext) {
             withContext(NonCancellable) {
                 expect(2)
                 yield()
@@ -53,14 +53,13 @@ class NonCancellableTest : TestBase() {
         }
 
         yield()
-        job.cancel(NumberFormatException())
+        deferred.cancel(NumberFormatException())
         expect(3)
-        assertTrue(job.isCancelled)
+        assertTrue(deferred.isCancelled)
         try {
-            job.await()
+            deferred.await()
             expectUnreached()
-        } catch (e: JobCancellationException) {
-            assertTrue(e.cause is NumberFormatException)
+        } catch (e: NumberFormatException) {
             finish(6)
         }
     }

@@ -2,16 +2,16 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.rx2
+package kotlinx.coroutines.rx2
 
 import io.reactivex.*
 import io.reactivex.functions.*
 import kotlinx.atomicfu.*
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.channels.*
-import kotlinx.coroutines.experimental.selects.*
-import kotlinx.coroutines.experimental.sync.*
-import kotlin.coroutines.experimental.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+import kotlinx.coroutines.selects.*
+import kotlinx.coroutines.sync.*
+import kotlin.coroutines.*
 
 /**
  * Creates cold [observable][Observable] that will run a given [block] in a coroutine.
@@ -123,7 +123,7 @@ private class RxObservableCoroutine<T>(
         } catch (e: Throwable) {
             try {
                 if (!cancel(e))
-                    handleCoroutineException(context, e)
+                    handleCoroutineException(context, e, this)
             } finally {
                 doLockedSignalCompleted()
             }
@@ -153,7 +153,7 @@ private class RxObservableCoroutine<T>(
                     else
                         subscriber.onComplete()
                 } catch (e: Throwable) {
-                    handleCoroutineException(context, e)
+                    handleCoroutineException(context, e, this)
                 }
             }
         } finally {
