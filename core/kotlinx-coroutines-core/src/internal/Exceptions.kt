@@ -2,11 +2,11 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.internal
+package kotlinx.coroutines.internal
 
-import kotlinx.coroutines.experimental.*
-import kotlin.coroutines.experimental.*
-import kotlin.coroutines.experimental.jvm.internal.*
+import kotlinx.coroutines.*
+import kotlin.coroutines.*
+import kotlin.coroutines.jvm.internal.*
 
 internal actual fun <E : Throwable> recoverStackTrace(exception: E): E {
     if (!DEBUG || exception is CancellationException) {
@@ -16,8 +16,9 @@ internal actual fun <E : Throwable> recoverStackTrace(exception: E): E {
     return tryWrapException(exception) ?: exception
 }
 
+@Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
 internal actual fun <E : Throwable> recoverStackTrace(exception: E, continuation: Continuation<*>): E {
-    if (!DEBUG || exception is CancellationException || continuation !is CoroutineImpl) {
+    if (!DEBUG || exception is CancellationException || continuation !is CoroutineStackFrame) {
         return exception
     }
 
@@ -53,36 +54,17 @@ private fun <E : Throwable> tryWrapException(exception: E): E? {
     return newException
 }
 
-private fun fillInStackTrace(continuation: Continuation<*>): ArrayList<StackTraceElement> {
+private fun fillInStackTrace(frame: CoroutineStackFrame): ArrayList<StackTraceElement> {
     val stack = ArrayList<StackTraceElement>()
 
-    stack.add(stackTraceElement(continuation))
-    var last = continuation
+    stackTraceElement(frame)?.let {  stack.add(it) }
+    var last = frame
     while (true) {
-        last = getCompletion(last) ?: break
-        stack.add(stackTraceElement(last))
+        last = last.callerFrame ?: break
+        stackTraceElement(last)?.let {  stack.add(it) }
     }
     return stack
 }
 
 // TODO basic stub before 1.3
-private fun stackTraceElement(continuation: Continuation<*>): StackTraceElement {
-    val name = continuation.javaClass.name
-    val index = name.indexOf("$")
-    if (index == -1) return StackTraceElement(name, "", null, -1)
-    val methodName = name.substring(index + 1)
-    return StackTraceElement(name.substring(0, index), methodName.substring(0, methodName.lastIndexOf("$")), null, -1)
-}
-
-private fun getCompletion(continuation: Continuation<*>): Continuation<*>? {
-    // TODO hack before 1.3
-    // TODO we may want to support our own builders such as "withContext"
-    if (continuation !is CoroutineImpl) return null
-    return try {
-        val field = CoroutineImpl::class.java.getDeclaredField("completion")
-        field.isAccessible = true
-        field.get(continuation) as Continuation<*>?
-    } catch (t: Throwable) {
-        null
-    }
-}
+private fun stackTraceElement(continuation: CoroutineStackFrame): StackTraceElement? = continuation.getStackTraceElement()

@@ -2,14 +2,14 @@
  * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
-package kotlinx.coroutines.experimental.exceptions
+package kotlinx.coroutines.exceptions
 
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.channels.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
 import org.junit.Test
 import java.io.*
 import java.util.concurrent.*
-import kotlin.coroutines.experimental.*
+import kotlin.coroutines.*
 import kotlin.test.*
 
 class StackTraceRecoveryTest : TestBase() {
@@ -80,6 +80,7 @@ class StackTraceRecoveryTest : TestBase() {
 
     private fun checkStackTrace(t: Throwable, vararg expectedSubstrings: String) {
         val stacktrace = toStackTrace(t)
+        println(stacktrace)
         expectedSubstrings.forEach {
             assertTrue(
                 stacktrace.contains(it),
@@ -108,28 +109,29 @@ class StackTraceRecoveryTest : TestBase() {
 
             val expected = """
             java.lang.ClassCastException
-            	at kotlinx.coroutines.experimental.DeferredCoroutine.await(Unknown Source)
-            	at kotlinx.coroutines.experimental.exceptions.StackTraceRecoveryTest.throwingMethod(Unknown Source)
-            	at kotlinx.coroutines.experimental.exceptions.StackTraceRecoveryTest.nestedMethod(Unknown Source)
-            	at kotlinx.coroutines.experimental.exceptions.StackTraceRecoveryTest.nestedMethod(Unknown Source)
-            	at kotlinx.coroutines.experimental.exceptions.StackTraceRecoveryTest.nestedMethod(Unknown Source)
-            	at kotlinx.coroutines.experimental.exceptions.StackTraceRecoveryTest.testFullStackTrace(Unknown Source)
-            	at kotlinx.coroutines.experimental.BlockingCoroutine.(Unknown Source)
+            	at kotlinx.coroutines.DeferredCoroutine.await(Unknown Source)
+            	at kotlinx.coroutines.exceptions.StackTraceRecoveryTest.throwingMethod(Unknown Source)
+            	at kotlinx.coroutines.exceptions.StackTraceRecoveryTest.nestedMethod(Unknown Source)
+            	at kotlinx.coroutines.exceptions.StackTraceRecoveryTest.nestedMethod(Unknown Source)
+            	at kotlinx.coroutines.exceptions.StackTraceRecoveryTest.nestedMethod(Unknown Source)
+            	at kotlinx.coroutines.exceptions.StackTraceRecoveryTest.testFullStackTrace(Unknown Source)
+            	at kotlinx.coroutines.BlockingCoroutine.(Unknown Source)
             Caused by: java.lang.ClassCastException: java.lang.Integer cannot be cast to java.lang.Long
-            	at kotlinx.coroutines.experimental.exceptions.StackTraceRecoveryTest${'$'}testFullStackTrace${'$'}1${'$'}deferred${'$'}1.doResume(StackTraceRecoveryTest.kt:101)
-            	at kotlin.coroutines.experimental.jvm.internal.CoroutineImpl.resume(CoroutineImpl.kt:42)
-            	at kotlinx.coroutines.experimental.DispatchedTask${'$'}DefaultImpls.run(Dispatched.kt:149)
-            	at kotlinx.coroutines.experimental.DispatchedContinuation.run(Dispatched.kt:13)
-            	at kotlinx.coroutines.experimental.EventLoopBase.processNextEvent(EventLoop.kt:132)
-            	at kotlinx.coroutines.experimental.BlockingCoroutine.joinBlocking(Builders.kt:69)
-            	at kotlinx.coroutines.experimental.BuildersKt__BuildersKt.runBlocking(Builders.kt:46)
-            	at kotlinx.coroutines.experimental.BuildersKt.runBlocking(Unknown Source)
-            	at kotlinx.coroutines.experimental.TestBase.runTest(TestBase.kt:132)
-            	at kotlinx.coroutines.experimental.TestBase.runTest${'$'}default(TestBase.kt:19)
-            	at kotlinx.coroutines.experimental.exceptions.StackTraceRecoveryTest.testFullStackTrace(StackTraceRecoveryTest.kt:98)
+            	at kotlinx.coroutines.exceptions.StackTraceRecoveryTest${'$'}testFullStackTrace${'$'}1${'$'}deferred${'$'}1.invokeSuspend(StackTraceRecoveryTest.kt:101)
+            	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:42)
+            	at kotlinx.coroutines.DispatchedTask${'$'}DefaultImpls.run(Dispatched.kt:149)
+            	at kotlinx.coroutines.DispatchedContinuation.run(Dispatched.kt:13)
+            	at kotlinx.coroutines.EventLoopBase.processNextEvent(EventLoop.kt:132)
+            	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:69)
+            	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:46)
+            	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source)
+            	at kotlinx.coroutines.TestBase.runTest(TestBase.kt:132)
+            	at kotlinx.coroutines.TestBase.runTest${'$'}default(TestBase.kt:19)
+            	at kotlinx.coroutines.exceptions.StackTraceRecoveryTest.testFullStackTrace(StackTraceRecoveryTest.kt:98)
             """.trim()
 
-            assertTrue(stacktrace.trim().startsWith(expected))
+            println(stacktrace)
+            assertTrue(stacktrace.trim().startsWith(expected), stacktrace)
         }
     }
 
