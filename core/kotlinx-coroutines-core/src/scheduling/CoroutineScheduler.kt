@@ -246,7 +246,7 @@ internal class CoroutineScheduler(
     private val random = Random()
 
     // This is used a "stop signal" for debugging/tests only
-    private val isTerminated = atomic(0) // workaround for atomicfu bug
+    private val isTerminated = atomic(false) // workaround for atomicfu bug
 
     companion object {
         private const val MAX_SPINS = 1000
@@ -298,26 +298,23 @@ internal class CoroutineScheduler(
      * and intended to be used only for testing. Invocation has no additional effect if already closed.
      */
     fun shutdown(timeout: Long) {
-        if (!isTerminated.compareAndSet(0, 1)) return
-        // Race with recently created threads which may park indefinitely
-        var finishedThreads = 0
-        while (finishedThreads < createdWorkers) {
-            var finished = 0
-            for (i in 1..createdWorkers) {
-                synchronized(workers) {
-                    // Get the worker from array and also clear reference in array under synchronization
-                    workers[i].also { workers[i] = null }
-                } ?.also {
-                    if (it.isAlive) {
-                        // Unparking alive thread is unsafe in general, but acceptable for testing purposes
-                        LockSupport.unpark(it)
-                        it.join(timeout)
-                    }
-                    ++finished
-                }
+        if (!isTerminated.compareAndSet(false, true)) return
+        // Capture # of created workers that cannot change anymore (sic! from inside synchronized!)
+        val created = synchronized(workers) { createdWorkers }
+        // Because isTerminated flag was already set, workers array cannot change anymore,
+        // since all modification happen under lock and check for isTerminated flag first
+        var terminated = 0 // # of terminated workers we've found
+        for (i in 1..maxPoolSize) {
+            val worker = workers[i] ?: continue
+            workers[i] = null
+            terminated++
+            if (worker.isAlive) {
+                // Unparking alive thread is unsafe in general, but acceptable for testing purposes
+                LockSupport.unpark(worker)
+                worker.join(timeout)
             }
-            finishedThreads = finished
         }
+        assert(created == terminated) { "created=$created, terminated=$terminated" }
         // cleanup state to make sure that tryUnpark tries to create new threads and crashes because it isTerminated
         assert(cpuPermits.availablePermits() == corePoolSize)
         parkedWorkersStack.value = 0L
@@ -439,7 +436,7 @@ internal class CoroutineScheduler(
     private fun createNewWorker(): Int {
         synchronized(workers) {
             // for test purposes make sure we're not trying to resurrect terminated scheduler
-            require(isTerminated.value == 0) { "This scheduler was terminated "}
+            if (isTerminated.value) throw ShutdownException()
             val state = controlState.value
             val created = createdWorkers(state)
             val blocking = blockingWorkers(state)
@@ -455,6 +452,9 @@ internal class CoroutineScheduler(
             return cpuWorkers + 1
         }
     }
+
+    // Is thrown when attempting to create new worker, but this scheduler isTerminated
+    private class ShutdownException : RuntimeException()
 
     /**
      * Returns [ADDED], or [NOT_ADDED], or [ADDED_REQUIRES_HELP].
@@ -682,28 +682,33 @@ internal class CoroutineScheduler(
         private var lastStealIndex = 0 // try in order repeated, reset when unparked
 
         override fun run() {
-            var wasIdle = false // local variable to avoid extra idleReset invocations when tasks repeatedly arrive
-            while (isTerminated.value == 0 && state != WorkerState.TERMINATED) {
-                val task = findTask()
-                if (task == null) {
-                    // Wait for a job with potential park
-                    if (state == WorkerState.CPU_ACQUIRED) {
-                        cpuWorkerIdle()
+            try {
+                var wasIdle = false // local variable to avoid extra idleReset invocations when tasks repeatedly arrive
+                while (!isTerminated.value && state != WorkerState.TERMINATED) {
+                    val task = findTask()
+                    if (task == null) {
+                        // Wait for a job with potential park
+                        if (state == WorkerState.CPU_ACQUIRED) {
+                            cpuWorkerIdle()
+                        } else {
+                            blockingWorkerIdle()
+                        }
+                        wasIdle = true
                     } else {
-                        blockingWorkerIdle()
+                        if (wasIdle) {
+                            idleReset(task.mode)
+                            wasIdle = false
+                        }
+                        beforeTask(task)
+                        runSafely(task)
+                        afterTask(task)
                     }
-                    wasIdle = true
-                } else {
-                    if (wasIdle) {
-                        idleReset(task.mode)
-                        wasIdle = false
-                    }
-                    beforeTask(task)
-                    runSafely(task)
-                    afterTask(task)
                 }
+            } catch(e: ShutdownException) {
+                // race with shutdown -- ignore exception and don't print it on the console
+            } finally {
+                tryReleaseCpu(WorkerState.TERMINATED)
             }
-            tryReleaseCpu(WorkerState.TERMINATED)
         }
 
         private fun runSafely(task: Task) {
@@ -814,6 +819,8 @@ internal class CoroutineScheduler(
          */
         private fun tryTerminateWorker() {
             synchronized(workers) {
+                // for test purposes make sure we're not trying to shutdown normally in terminated scheduler
+                if (isTerminated.value) throw ShutdownException()
                 // Someone else terminated, bail out
                 if (createdWorkers <= corePoolSize) return
                 // Try to find blocking task before termination
