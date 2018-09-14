@@ -59,11 +59,17 @@ public object NonCancellable : AbstractCoroutineContextElement(Job), Job {
         NonDisposableHandle
 
     /** Always returns [NonDisposableHandle]. */
-    override fun invokeOnCompletion(onCancelling: Boolean, invokeImmediately: Boolean, handler: CompletionHandler): DisposableHandle =
+    override fun invokeOnCompletion(onFailing: Boolean, invokeImmediately: Boolean, handler: CompletionHandler): DisposableHandle =
         NonDisposableHandle
 
     /** Always returns `false`. */
-    override fun cancel(cause: Throwable?): Boolean = false
+    override fun cancel(cause: Throwable?): Boolean = false // never handles exceptions
+
+    /** @suppress */
+    override fun childFailed(cause: Throwable): Boolean = false // never handles exceptions
+
+    /** @suppress */
+    override fun cancelChild(parentJob: Job): Unit = error("Cannot be invoked, does not have a parent")
 
     /** Always returns [emptySequence]. */
     override val children: Sequence<Job>
