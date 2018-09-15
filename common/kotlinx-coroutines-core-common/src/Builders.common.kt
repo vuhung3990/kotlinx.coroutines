@@ -207,7 +207,7 @@ public suspend fun <T> run(context: CoroutineContext, block: suspend () -> T): T
 // --------------- implementation ---------------
 
 private open class StandaloneCoroutine(
-    private val parentContext: CoroutineContext,
+    parentContext: CoroutineContext,
     active: Boolean
 ) : AbstractCoroutine<Unit>(parentContext, active) {
     override fun handleJobException(exception: Throwable) {
@@ -247,6 +247,5 @@ private class RunCompletion<in T>(
     delegate: Continuation<T>,
     resumeMode: Int
 ) : AbstractContinuation<T>(delegate, resumeMode) {
-
     override val useCancellingState: Boolean get() = true
 }

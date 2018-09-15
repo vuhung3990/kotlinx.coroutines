@@ -89,6 +89,10 @@ private open class TimeoutCoroutine<U, in T: U>(
             uCont.resumeUninterceptedMode(state as T, mode)
     }
 
+    override fun handleJobException(exception: Throwable) {
+        /* do nothing -- exception will get reported upstream */
+    }
+
     override fun nameString(): String =
         "${super.nameString()}($time $unit)"
 }

@@ -30,7 +30,10 @@ import kotlin.coroutines.experimental.*
  */
 @Suppress("EXPOSED_SUPER_CLASS")
 public abstract class AbstractCoroutine<in T>(
-    private val parentContext: CoroutineContext,
+    /**
+     * Context of the parent coroutine.
+     */
+    protected val parentContext: CoroutineContext,
     active: Boolean = true
 ) : JobSupport(active), Job, Continuation<T>, CoroutineScope {
     @Suppress("LeakingThis")
@@ -110,6 +113,15 @@ public abstract class AbstractCoroutine<in T>(
      */
     public final override fun resumeWithException(exception: Throwable) {
         makeCompletingOnce(CompletedExceptionally(exception), defaultResumeMode)
+    }
+
+    // Default implementation for coroutines is to cancel parent Job on exception
+    internal override fun handleJobException(exception: Throwable) {
+        // Ignore CancellationException (they are normal ways to terminate a coroutine)
+        if (exception is CancellationException) return
+        // Cancel parent if present
+        val parent = parentContext[Job]
+        if (parent !== null && parent !== this) parent.cancel(exception)
     }
 
     internal final override fun handleOnCompletionException(exception: Throwable) {

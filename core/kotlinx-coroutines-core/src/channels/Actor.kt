@@ -198,7 +198,7 @@ private open class ActorCoroutine<E>(
     }
 
     override fun handleJobException(exception: Throwable) {
-        handleCoroutineException(context, exception, this)
+        handleCoroutineException(parentContext, exception, this)
     }
 }
 

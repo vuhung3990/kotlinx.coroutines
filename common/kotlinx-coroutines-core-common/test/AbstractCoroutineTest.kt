@@ -4,11 +4,9 @@
 
 package kotlinx.coroutines.experimental
 
-import kotlin.coroutines.experimental.*
 import kotlin.test.*
 
 class AbstractCoroutineTest : TestBase() {
-
     @Test
     fun testNotifications() = runTest {
         expect(1)
@@ -19,7 +17,7 @@ class AbstractCoroutineTest : TestBase() {
             }
 
             override fun onCancellation(cause: Throwable?) {
-                assertTrue(cause == null)
+                assertEquals(null, cause)
                 expect(5)
             }
 
@@ -34,12 +32,12 @@ class AbstractCoroutineTest : TestBase() {
         }
 
         coroutine.invokeOnCompletion(onCancelling = true) {
-            assertTrue(it == null)
+            assertEquals(null, it)
             expect(6)
         }
 
         coroutine.invokeOnCompletion {
-            assertTrue(it == null)
+            assertEquals(null, it)
             expect(7)
         }
         expect(2)
@@ -53,7 +51,7 @@ class AbstractCoroutineTest : TestBase() {
     fun testNotificationsWithException() = runTest {
         expect(1)
         val coroutineContext = coroutineContext // workaround for KT-22984
-        val coroutine = object : AbstractCoroutine<String>(coroutineContext, false) {
+        val coroutine = object : AbstractCoroutine<String>(coroutineContext + NonCancellable, false) {
             override fun onStart() {
                 expect(3)
             }

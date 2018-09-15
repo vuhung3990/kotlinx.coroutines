@@ -30,7 +30,7 @@ class ProduceTest : TestBase() {
 
     @Test
     fun testCancelWithoutCause() = runTest {
-        val c = produce {
+        val c = produce(NonCancellable) {
             expect(2)
             send(1)
             expect(3)
@@ -54,7 +54,7 @@ class ProduceTest : TestBase() {
 
     @Test
     fun testCancelWithCause() = runTest {
-        val c = produce {
+        val c = produce(NonCancellable) {
             expect(2)
             send(1)
             expect(3)

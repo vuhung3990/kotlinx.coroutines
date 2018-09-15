@@ -102,13 +102,22 @@ internal abstract class AbstractContinuation<in T>(
 
     override fun takeState(): Any? = state
 
-    public fun cancel(cause: Throwable?): Boolean {
+    public fun cancel(cause: Throwable?): Boolean =
+        cancelInternal(CancelledContinuation(this, cause))
+
+    internal fun cancelInternal(update: CompletedExceptionally): Boolean {
         loopOnState { state ->
             if (state !is NotCompleted) return false // quit if already complete
             if (state is Cancelling) return false // someone else succeeded
-            if (tryCancel(state, cause)) return true
+            if (tryCancel(state, update)) return true
         }
     }
+
+    /**
+     * It is used when parent is cancelled to get the cancellation cause for this continuation.
+     */
+    internal open fun getCancellationState(parent: Job): CompletedExceptionally =
+        CancelledContinuation(this, parent.getCancellationException())
 
     private fun trySuspend(): Boolean {
         _decision.loop { decision ->
@@ -145,6 +154,9 @@ internal abstract class AbstractContinuation<in T>(
     override fun resumeWithException(exception: Throwable) =
         resumeImpl(CompletedExceptionally(exception), resumeMode)
 
+    internal fun resumeWithExceptionMode(exception: Throwable, mode: Int) =
+        resumeImpl(CompletedExceptionally(exception), mode)
+
     public fun invokeOnCancellation(handler: CompletionHandler) {
         var handleCache: CancelHandler? = null
         loopOnState { state ->
@@ -179,13 +191,12 @@ internal abstract class AbstractContinuation<in T>(
     private fun makeHandler(handler: CompletionHandler): CancelHandler =
         if (handler is CancelHandler) handler else InvokeOnCancel(handler)
 
-    private fun tryCancel(state: NotCompleted, cause: Throwable?): Boolean {
-        if (useCancellingState) {
+    private fun tryCancel(state: NotCompleted, update: CompletedExceptionally): Boolean {
+        if (useCancellingState && update is CancelledContinuation) {
             require(state !is CancelHandler) { "Invariant: 'Cancelling' state and cancellation handlers cannot be used together" }
-            return _state.compareAndSet(state, Cancelling(CancelledContinuation(this, cause)))
+            return _state.compareAndSet(state, Cancelling(update))
         }
-
-        return updateStateToFinal(state, CancelledContinuation(this, cause), mode = MODE_ATOMIC_DEFAULT)
+        return updateStateToFinal(state, update, mode = MODE_ATOMIC_DEFAULT)
     }
 
     private fun dispatchResume(mode: Int) {
@@ -314,7 +325,6 @@ internal abstract class AbstractContinuation<in T>(
         if (!tryUpdateStateToFinal(expect, proposedUpdate)) {
             return false
         }
-
         completeStateUpdate(expect, proposedUpdate, mode)
         return true
     }

@@ -10,15 +10,16 @@ import kotlin.coroutines.experimental.*
 internal class ScopeOwnerCoroutine<R>(
     parentContext: CoroutineContext
 ) : AbstractCoroutine<R>(parentContext, true), CoroutineScope {
-
-    override val coroutineContext: CoroutineContext = parentContext + this
-
     /*
      * Always return true, so final exception is in the scope before its completion.
      */
     override fun cancel(cause: Throwable?): Boolean {
         super.cancel(cause)
         return true
+    }
+
+    override fun handleJobException(exception: Throwable) {
+        /* do nothing -- exception will get reported upstream */
     }
 }
 
